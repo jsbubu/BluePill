@@ -5,11 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>BluePill Logger</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-  <link rel="manifest" href="manifest.json">
-<script>
-  if ('serviceWorker' in navigator)
-    navigator.serviceWorker.register('sw.js');
-</script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap');
 
@@ -340,8 +335,8 @@
 
 <script>
 // ── UUIDs BLE (à adapter selon ton fichier gatt_configuration.btconf) ──────
-const SERVICE_UUID  = '00000001-0000-1000-8000-00805f9b34fb'; // à remplacer
-const CHAR_HISTORY  = '00000002-0000-1000-8000-00805f9b34fb'; // à remplacer
+const SERVICE_UUID  = '00001809-0000-1000-8000-00805f9b34fb'; // à remplacer
+const CHAR_HISTORY  = 'a838e31a-d72f-4a89-8a21-a47fd67da42f'; // à remplacer
 
 // ── État global ──────────────────────────────────────────────────────────────
 let temperatures = [];
@@ -498,7 +493,7 @@ async function connect() {
     document.getElementById('btn-connect').classList.add('active');
 
   } catch (err) {
-    log(`Erreur : ${err.message}`, 'warn');
+    log(`Erreur : ${err.name} — ${err.message || JSON.stringify(err)}`, 'warn');
     setStatus('', 'Erreur de connexion', '');
   }
 }
