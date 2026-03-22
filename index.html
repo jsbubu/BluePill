@@ -519,7 +519,6 @@ function exportCSV() {
 
   const intervalMin = 5;
   const now = new Date();
-  // On remonte dans le temps depuis maintenant
   const startTime = new Date(now.getTime() - (temperatures.length - 1) * intervalMin * 60000);
 
   let csv = 'index,timestamp_estimé,température_°C\n';
@@ -528,6 +527,13 @@ function exportCSV() {
     const iso = ts.toISOString().slice(0, 19).replace('T', ' ');
     csv += `${i},${iso},${t.toFixed(1)}\n`;
   });
+
+  // iOS : ouvrir dans un nouvel onglet plutôt que télécharger
+  const blob = new Blob([csv], { type: 'text/plain' });
+  const url  = URL.createObjectURL(blob);
+  window.open(url, '_blank');
+  log(`CSV ouvert — fais "Partager" puis "Enregistrer dans Fichiers"`, 'ok');
+}
 
   const blob = new Blob([csv], { type: 'text/csv' });
   const url  = URL.createObjectURL(blob);
