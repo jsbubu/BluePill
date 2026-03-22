@@ -519,6 +519,7 @@ function exportCSV() {
 
   const intervalMin = 5;
   const now = new Date();
+  // On remonte dans le temps depuis maintenant
   const startTime = new Date(now.getTime() - (temperatures.length - 1) * intervalMin * 60000);
 
   let csv = 'index,timestamp_estimé,température_°C\n';
@@ -528,21 +529,11 @@ function exportCSV() {
     csv += `${i},${iso},${t.toFixed(1)}\n`;
   });
 
-  // iOS : ouvrir dans un nouvel onglet plutôt que télécharger
+  // iOS : ouvrir dans un nouvel onglet → Partager → Enregistrer dans Fichiers
   const blob = new Blob([csv], { type: 'text/plain' });
   const url  = URL.createObjectURL(blob);
   window.open(url, '_blank');
-  log(`CSV ouvert — fais "Partager" puis "Enregistrer dans Fichiers"`, 'ok');
-}
-
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href     = url;
-  a.download = `bluepill_${now.toISOString().slice(0,10)}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-  log(`CSV exporté — ${temperatures.length} lignes`, 'ok');
+  log(`CSV ouvert — appuie sur Partager puis "Enregistrer dans Fichiers"`, 'ok');
 }
 
 // ── Listeners boutons ────────────────────────────────────────────────────────
