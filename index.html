@@ -134,37 +134,55 @@ button {
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js');
 }
+
 const SERVICE_UUID  = '00001809-0000-1000-8000-00805f9b34fb'; 
 const CHAR_HISTORY  = 'a838e31a-d72f-4a89-8a21-a47fd67da42f';
 
 let device=null, char=null, temperatures=[];
 let lastPacketTime=null, lostWarnings=0, packetCount=0;
 let chart;
-// 1. Min/Max robuste sans spread
+
 let tempMin = Infinity, tempMax = -Infinity;
-function updateMinMax(t) {
-  if (t < tempMin) tempMin = t;
-  if (t > tempMax) tempMax = t;
-}
-// 2. Gap warning seuil réaliste
 const GAP_THRESHOLD_MS = 4000;
+const DUMP_TIMEOUT_MS = 6000;
+const MAX_STORE = 50000;
 
-// 3. Détection fin de dump
 let dumpTimer = null;
-function resetDumpTimer() {
-  if (dumpTimer) clearTimeout(dumpTimer);
-  dumpTimer = setTimeout(() => {
-    log(`Dump probablement terminé — ${temperatures.length} mesures`, 'OK');
-    setStatus('connected', 'Dump terminé', device?.name);
-  }, 3000);
+
+// ---------- STATUS UI ----------
+function setStatus(state, text, name="") {
+  const dot = document.getElementById('dot');
+  const status = document.getElementById('status-text');
+  const dev = document.getElementById('device-name');
+
+  dot.className = 'dot ' + state;
+  status.textContent = text;
+  dev.textContent = name || "";
 }
 
+// ---------- LOG ----------
 function log(msg,type="INFO"){
  const el=document.getElementById('log');
  el.innerHTML+=`[${new Date().toLocaleTimeString()}][${type}] ${msg}<br>`;
  el.scrollTop=el.scrollHeight;
 }
 
+// ---------- MIN/MAX ----------
+function updateMinMax(t) {
+  if (t < tempMin) tempMin = t;
+  if (t > tempMax) tempMax = t;
+}
+
+// ---------- DUMP TIMER ----------
+function resetDumpTimer() {
+  if (dumpTimer) clearTimeout(dumpTimer);
+  dumpTimer = setTimeout(() => {
+    log(`Dump terminé — ${temperatures.length} mesures`, 'OK');
+    setStatus('connected', 'Dump terminé', device?.name);
+  }, DUMP_TIMEOUT_MS);
+}
+
+// ---------- CHART ----------
 function initChart(){
  chart=new Chart(document.getElementById('chart'),{
   type:'line',
@@ -173,10 +191,17 @@ function initChart(){
  });
 }
 
+// ---------- CONNECT ----------
 async function connect(){
  try{
+  setStatus('connecting',"Scan...");
   log("Scan...");
-  device=await navigator.bluetooth.requestDevice({filters:[{namePrefix:'BluePill'}],optionalServices:[SERVICE_UUID]});
+
+  device=await navigator.bluetooth.requestDevice({
+    filters:[{namePrefix:'BluePill'}],
+    optionalServices:[SERVICE_UUID]
+  });
+
   device.addEventListener('gattserverdisconnected',onDisconnected);
 
   const server=await device.gatt.connect();
@@ -188,11 +213,16 @@ async function connect(){
   await char.startNotifications();
   char.addEventListener('characteristicvaluechanged',onData);
 
+  setStatus('connected',"Connecté",device.name);
   log("Notifications ON");
 
- }catch(e){log(e.message,"ERR");}
+ }catch(e){
+  log(e.message,"ERR");
+  setStatus('',"Erreur");
+ }
 }
-// 5. Dans onData — appel resetDumpTimer
+
+// ---------- DATA RX ----------
 function onData(e) {
   const now = Date.now();
   const dv = e.target.value;
@@ -201,47 +231,57 @@ function onData(e) {
 
   if (lastPacketTime && (now - lastPacketTime) > GAP_THRESHOLD_MS) {
     lostWarnings++;
-    log('Gap détecté — possible perte de données', 'WARN');
+    log('Gap détecté — possible perte', 'WARN');
   }
+
   lastPacketTime = now;
-  log(`RX #${packetCount} — ${count} valeurs (total : ${temperatures.length + count})`);
+
+  log(`RX #${packetCount} — ${count} valeurs (${dv.byteLength} bytes)`);
 
   for (let i = 0; i < count; i++) {
     const t = dv.getInt16(i * 2, true) / 10;
+
     if (t < -50 || t > 150) {
       log(`Valeur aberrante ignorée : ${t}°C`, 'WARN');
       continue;
     }
-    temperatures.push(t);
-    updateMinMax(t);
+
+    if (temperatures.length < MAX_STORE) {
+      temperatures.push(t);
+      updateMinMax(t);
+    } else {
+      log("Buffer plein — données ignorées", "WARN");
+    }
   }
 
   resetDumpTimer();
   updateUI();
+
   document.getElementById('btn-export').disabled = false;
 }
 
-Tu veux que je génère le fichier HTML complet avec toutes ces corrections intégrées ?
-
-
+// ---------- UI ----------
 function updateUI(){
  if(!temperatures.length) return;
 
  document.getElementById('m-count').textContent=temperatures.length;
- document.getElementById('m-min').textContent=Math.min(...temperatures).toFixed(1);
- document.getElementById('m-max').textContent=Math.max(...temperatures).toFixed(1);
+ document.getElementById('m-min').textContent=tempMin.toFixed(1);
+ document.getElementById('m-max').textContent=tempMax.toFixed(1);
 
  const data=temperatures.slice(-2000);
  chart.data.labels=data.map((_,i)=>i);
  chart.data.datasets[0].data=data;
  chart.update();
 }
-// 4. Export iOS/Android
+
+// ---------- EXPORT ----------
 function exportCSV() {
   const intervalMin = 5;
   const now = new Date();
   const start = new Date(now - (temperatures.length - 1) * intervalMin * 60000);
+
   let csv = 'index,timestamp_estime,temperature_C\n';
+
   temperatures.forEach((t, i) => {
     const ts = new Date(start.getTime() + i * intervalMin * 60000);
     csv += `${i},${ts.toISOString().slice(0,19).replace('T',' ')},${t.toFixed(1)}\n`;
@@ -259,22 +299,37 @@ function exportCSV() {
     a.download = file.name;
     a.click();
   }
+
   if (lostWarnings > 0)
-    log(`Attention : ${lostWarnings} gaps détectés — données peut-être incomplètes`, 'WARN');
+    log(`⚠ ${lostWarnings} gaps détectés`, 'WARN');
 }
 
+// ---------- DISCONNECT ----------
 function onDisconnected(){
  log("Déconnecté","WARN");
- if(temperatures.length) log("⚠ dump incomplet","WARN");
+ setStatus('',"Déconnecté");
+
+ if(temperatures.length)
+   log("⚠ dump incomplet","WARN");
 }
 
+// ---------- FREEZE DETECTION ----------
+setInterval(() => {
+  if (lastPacketTime && Date.now() - lastPacketTime > 8000) {
+    log("⚠ Aucun paquet reçu depuis 8s", "WARN");
+  }
+}, 2000);
+
+// ---------- BUTTONS ----------
 document.getElementById('btn-connect').onclick=()=>{
- device?.gatt.connected?device.gatt.disconnect():connect();
+ device?.gatt.connected ? device.gatt.disconnect() : connect();
 };
 
 document.getElementById('btn-export').onclick=exportCSV;
 
+// ---------- INIT ----------
 initChart();
+setStatus('',"Prêt");
 </script>
 </body>
 </html>
