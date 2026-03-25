@@ -131,6 +131,9 @@ button {
 </div>
 
 <script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js');
+}
 const SERVICE_UUID  = '00001809-0000-1000-8000-00805f9b34fb'; 
 const CHAR_HISTORY  = 'a838e31a-d72f-4a89-8a21-a47fd67da42f';
 
