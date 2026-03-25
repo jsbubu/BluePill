@@ -497,54 +497,57 @@ async function exportCSV(isAuto = false) {
 
   const intervalMin = 5;
   const dumpTime = new Date();
-  const safeName = (device ? device.name : 'UnknownLogger').replace(/[^a-zA-Z0-9-]/g, '_');
   
-  // Formatage Nom de fichier : Name_YYYYMMDD_HHMM.csv
-  const dateStr = dumpTime.toISOString().slice(0,10).replace(/-/g, '');
-  const timeStr = dumpTime.toTimeString().slice(0,5).replace(/:/g, '');
+  // On récupère le nom complet (ex: BluePill-F4A2) ou "Unknown" par défaut
+  const fullName = (device && device.name) ? device.name : 'BluePill-Unknown';
+  
+  // Nettoyage du nom pour le système de fichier
+  const safeName = fullName.replace(/[^a-zA-Z0-9-]/g, '_');
+
+  // Formatage Date et Heure pour le nom de fichier (Ex: 2026-03-25_14h30)
+  const dateStr = dumpTime.toISOString().slice(0, 10); // 2026-03-25
+  const timeStr = dumpTime.getHours() + 'h' + dumpTime.getMinutes().toString().padStart(2, '0');
+  
   lastFilename = `${safeName}_${dateStr}_${timeStr}.csv`;
 
-  // Construction de l'en-tête (avec métadonnées utiles)
-  let csv = `# Logger : ${device ? device.name : 'Inconnu'}\n`;
-  csv += `# WebBT ID : ${device ? device.id : 'N/A'}\n`;
-  csv += `# Date du dump : ${dumpTime.toLocaleString('fr-FR')}\n`;
-  csv += `# Total mesures : ${temperatures.length}\n`;
-  csv += `index,timestamp,temperature_C\n`;
+  // --- CONSTRUCTION DU CONTENU DU FICHIER ---
+  let csv = `----------------------------------------\n`;
+  csv += `LOGGER ID      : ${fullName}\n`; // Affiche BluePill-F4A2
+  csv += `DATE DUMP      : ${dumpTime.toLocaleString('fr-FR')}\n`;
+  csv += `NB MESURES     : ${temperatures.length}\n`;
+  csv += `INTERVALLE     : ${intervalMin} min\n`;
+  csv += `----------------------------------------\n`;
+  csv += `index;timestamp;temperature_C\n`;
 
-  // Génération des lignes avec timestamp inversé
+  // Génération des lignes avec timestamp inversé (-5 min par point)
   temperatures.forEach((t, i) => {
-    // Le dernier point (length - 1) est "maintenant". Les autres sont dans le passé.
+    // Le dernier point est "maintenant", on remonte le temps
     const pointsFromEnd = (temperatures.length - 1) - i;
     const ts = new Date(dumpTime.getTime() - (pointsFromEnd * intervalMin * 60000));
     
-    // Format YYYY-MM-DD HH:mm:ss
-    const iso = ts.toISOString().slice(0, 19).replace('T', ' ');
-    csv += `${i},${iso},${t.toFixed(1)}\n`;
+    // Format français DD/MM/YYYY HH:mm:ss
+    const tsString = ts.toLocaleString('fr-FR').replace(',', '');
+    
+    csv += `${i};${tsString};${t.toFixed(1)}\n`;
   });
 
   lastCSV = csv;
 
-  // Affichage dans l'interface
-  const card = document.getElementById('csv-card');
+  // Affichage et téléchargement automatique
   const area = document.getElementById('csv-output');
-  card.style.display = 'block';
+  document.getElementById('csv-card').style.display = 'block';
   area.value = csv;
   
-  // Déclenchement du téléchargement automatique
   try {
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
     link.setAttribute("download", lastFilename);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
-    
-    if (isAuto) log(`Fichier ${lastFilename} enregistré auto !`, 'ok');
+    if (isAuto) log(`Fichier enregistré : ${lastFilename}`, 'ok');
   } catch(e) {
-    log(`Erreur d'enregistrement auto. Utilise le bouton Partager.`, 'warn');
+    log(`Erreur d'enregistrement auto.`, 'warn');
   }
 }
 
