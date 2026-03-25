@@ -1,620 +1,397 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>BluePill Logger</title>
-<script src="chart.umd.js"></script>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap');
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>BluePill Logger</title>
+    <script src="chart.umd.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap');
 
-  :root {
-    --bg:       #0a0e14;
-    --surface:  #111820;
-    --border:   #1e2a35;
-    --accent:   #00d4ff;
-    --accent2:  #00ff9d;
-    --warn:     #ff6b35;
-    --text:     #c8d8e8;
-    --muted:    #4a6070;
-    --mono:     'IBM Plex Mono', monospace;
-    --sans:     'IBM Plex Sans', sans-serif;
-  }
+        :root {
+            --bg: #0a0e14;
+            --surface: #111820;
+            --border: #1e2a35;
+            --accent: #00d4ff;
+            --accent2: #00ff9d;
+            --warn: #ff6b35;
+            --text: #c8d8e8;
+            --muted: #4a6070;
+            --mono: 'IBM Plex Mono', monospace;
+            --sans: 'IBM Plex Sans', sans-serif;
+        }
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--sans);
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--sans);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
 
-  /* ── Grid scan animation bg ── */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background:
-      repeating-linear-gradient(0deg, transparent, transparent 39px, var(--border) 39px, var(--border) 40px),
-      repeating-linear-gradient(90deg, transparent, transparent 39px, var(--border) 39px, var(--border) 40px);
-    opacity: 0.25;
-    pointer-events: none;
-    z-index: 0;
-  }
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                repeating-linear-gradient(0deg, transparent, transparent 39px, var(--border) 39px, var(--border) 40px),
+                repeating-linear-gradient(90deg, transparent, transparent 39px, var(--border) 39px, var(--border) 40px);
+            opacity: 0.25;
+            pointer-events: none;
+            z-index: 0;
+        }
 
-  .app { position: relative; z-index: 1; max-width: 480px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+        .app { position: relative; z-index: 1; max-width: 480px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
 
-  /* ── Header ── */
-  header { margin-bottom: 2rem; }
-  .logo {
-    font-family: var(--mono);
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.2em;
-    color: var(--accent);
-    text-transform: uppercase;
-    margin-bottom: 4px;
-  }
-  h1 {
-    font-family: var(--mono);
-    font-size: 28px;
-    font-weight: 600;
-    color: #fff;
-    letter-spacing: -0.02em;
-  }
-  h1 span { color: var(--accent2); }
+        header { margin-bottom: 2rem; }
+        .logo {
+            font-family: var(--mono);
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.2em;
+            color: var(--accent);
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+        h1 { font-family: var(--mono); font-size: 28px; font-weight: 600; color: #fff; letter-spacing: -0.02em; }
+        h1 span { color: var(--accent2); }
 
-  /* ── Status bar ── */
-  .status-bar {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 14px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    margin-bottom: 1.5rem;
-    font-family: var(--mono);
-    font-size: 12px;
-  }
-  .dot {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    background: var(--muted);
-    flex-shrink: 0;
-    transition: background 0.3s;
-  }
-  .dot.connected   { background: var(--accent2); box-shadow: 0 0 6px var(--accent2); animation: pulse 2s infinite; }
-  .dot.connecting  { background: var(--accent);  animation: blink 0.6s infinite; }
-  .dot.dumping     { background: var(--warn);    animation: blink 0.4s infinite; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
-  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
-  #status-text { color: var(--text); flex: 1; }
-  #device-name { color: var(--muted); font-size: 10px; }
+        .status-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            font-family: var(--mono);
+            font-size: 12px;
+        }
+        .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); transition: background 0.3s; }
+        .dot.connected { background: var(--accent2); box-shadow: 0 0 6px var(--accent2); animation: pulse 2s infinite; }
+        .dot.connecting { background: var(--accent); animation: blink 0.6s infinite; }
+        .dot.dumping { background: var(--warn); animation: blink 0.4s infinite; }
+        
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
 
-  /* ── Metric cards ── */
-  .metrics {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
-    margin-bottom: 1.5rem;
-  }
-  .metric {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 12px;
-  }
-  .metric-label {
-    font-family: var(--mono);
-    font-size: 9px;
-    letter-spacing: 0.15em;
-    color: var(--muted);
-    text-transform: uppercase;
-    margin-bottom: 6px;
-  }
-  .metric-value {
-    font-family: var(--mono);
-    font-size: 20px;
-    font-weight: 600;
-    color: #fff;
-    line-height: 1;
-  }
-  .metric-value.accent  { color: var(--accent); }
-  .metric-value.accent2 { color: var(--accent2); }
-  .metric-value.warn    { color: var(--warn); }
-  .metric-unit { font-size: 11px; color: var(--muted); margin-left: 2px; }
+        #status-text { color: var(--text); flex: 1; }
+        #device-name { color: var(--muted); font-size: 10px; }
 
-  /* ── Chart ── */
-  .chart-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 16px;
-    margin-bottom: 1.5rem;
-  }
-  .chart-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-  }
-  .chart-title {
-    font-family: var(--mono);
-    font-size: 10px;
-    letter-spacing: 0.15em;
-    color: var(--muted);
-    text-transform: uppercase;
-  }
-  .chart-range {
-    font-family: var(--mono);
-    font-size: 10px;
-    color: var(--accent);
-  }
-  .chart-wrap { position: relative; height: 180px; }
+        .metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 1.5rem; }
+        .metric { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+        .metric-label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.15em; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; }
+        .metric-value { font-family: var(--mono); font-size: 20px; font-weight: 600; color: #fff; line-height: 1; }
+        .metric-value.accent { color: var(--accent); }
+        .metric-value.warn { color: var(--warn); }
+        .metric-unit { font-size: 11px; color: var(--muted); margin-left: 2px; }
 
-  /* ── Buttons ── */
-  .btn-row { display: flex; gap: 8px; margin-bottom: 1.5rem; }
-  button {
-    flex: 1;
-    padding: 14px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--surface);
-    color: var(--text);
-    font-family: var(--mono);
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.05em;
-    cursor: pointer;
-    transition: all 0.15s;
-    -webkit-tap-highlight-color: transparent;
-  }
-  button:active { transform: scale(0.97); }
-  #btn-connect {
-    border-color: var(--accent);
-    color: var(--accent);
-  }
-  #btn-connect:hover, #btn-connect.active {
-    background: var(--accent);
-    color: var(--bg);
-  }
-  #btn-export {
-    border-color: var(--accent2);
-    color: var(--accent2);
-  }
-  #btn-export:hover {
-    background: var(--accent2);
-    color: var(--bg);
-  }
-  #btn-export:disabled {
-    border-color: var(--border);
-    color: var(--muted);
-    cursor: default;
-  }
-  #btn-clear {
-    border-color: var(--warn);
-    color: var(--warn);
-    flex: 0 0 auto;
-    padding: 14px 16px;
-  }
+        .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 1.5rem; }
+        .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .chart-title { font-family: var(--mono); font-size: 10px; color: var(--muted); text-transform: uppercase; }
+        .chart-range { font-family: var(--mono); font-size: 10px; color: var(--accent); }
+        .chart-wrap { position: relative; height: 180px; }
 
-  /* ── Log ── */
-  .log-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    overflow: hidden;
-  }
-  .log-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 14px;
-    border-bottom: 1px solid var(--border);
-  }
-  .log-title {
-    font-family: var(--mono);
-    font-size: 10px;
-    letter-spacing: 0.15em;
-    color: var(--muted);
-    text-transform: uppercase;
-  }
-  #log {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--muted);
-    padding: 12px 14px;
-    height: 140px;
-    overflow-y: auto;
-    line-height: 1.7;
-  }
-  #log .ok   { color: var(--accent2); }
-  #log .info { color: var(--accent); }
-  #log .warn { color: var(--warn); }
+        .btn-row { display: flex; gap: 8px; margin-bottom: 1.5rem; }
+        button {
+            flex: 1; padding: 14px; border: 1px solid var(--border); border-radius: 8px;
+            background: var(--surface); color: var(--text); font-family: var(--mono);
+            font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s;
+        }
+        button:active { transform: scale(0.97); }
+        #btn-connect { border-color: var(--accent); color: var(--accent); }
+        #btn-connect.active { background: var(--accent); color: var(--bg); }
+        #btn-export { border-color: var(--muted); color: var(--muted); }
+        #btn-export.ready { border-color: var(--accent2); color: var(--accent2); }
+        #btn-clear { border-color: var(--warn); color: var(--warn); flex: 0 0 auto; padding: 14px 16px; }
 
-  #csv-card { display: none; margin-bottom: 1.5rem; }
-  #csv-output {
-    width: 100%; height: 160px;
-    background: var(--bg); color: var(--accent2);
-    font-family: var(--mono); font-size: 10px;
-    border: none; padding: 12px 14px;
-    resize: none; outline: none; line-height: 1.6;
-  }
+        .log-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 1rem; }
+        .log-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+        .log-title { font-family: var(--mono); font-size: 10px; color: var(--muted); text-transform: uppercase; }
+        #log { font-family: var(--mono); font-size: 11px; color: var(--muted); padding: 12px 14px; height: 120px; overflow-y: auto; line-height: 1.6; }
+        #log .ok { color: var(--accent2); }
+        #log .info { color: var(--accent); }
+        #log .warn { color: var(--warn); }
 
-  footer {
-    text-align: center;
-    font-family: var(--mono);
-    font-size: 10px;
-    color: var(--muted);
-    margin-top: 2rem;
-    letter-spacing: 0.1em;
-  }
-</style>
+        #csv-card { display: none; }
+        #csv-output { width: 100%; height: 150px; background: #000; color: var(--accent2); font-family: var(--mono); font-size: 10px; border: none; padding: 12px; resize: none; }
+
+        footer { text-align: center; font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 2rem; }
+    </style>
 </head>
 <body>
 <div class="app">
+    <header>
+        <div class="logo">Firmware v2.1 · BLE 5.0</div>
+        <h1>Blue<span>Pill</span></h1>
+    </header>
 
-  <header>
-    <div class="logo">Firmware v2.0 · BLE 5.0 · DLE</div>
-    <h1>Blue<span>Pill</span></h1>
-  </header>
-
-  <div class="status-bar">
-    <div class="dot" id="dot"></div>
-    <span id="status-text">En attente</span>
-    <span id="device-name"></span>
-  </div>
-
-  <div class="metrics">
-    <div class="metric">
-      <div class="metric-label">Mesures</div>
-      <div class="metric-value accent" id="m-count">—</div>
+    <div class="status-bar">
+        <div class="dot" id="dot"></div>
+        <span id="status-text">Prêt</span>
+        <span id="device-name"></span>
     </div>
-    <div class="metric">
-      <div class="metric-label">Temp min</div>
-      <div class="metric-value" id="m-min">—<span class="metric-unit">°C</span></div>
-    </div>
-    <div class="metric">
-      <div class="metric-label">Temp max</div>
-      <div class="metric-value warn" id="m-max">—<span class="metric-unit">°C</span></div>
-    </div>
-  </div>
 
-  <div class="chart-card">
-    <div class="chart-header">
-      <span class="chart-title">Historique température</span>
-      <span class="chart-range" id="chart-range">—</span>
+    <div class="metrics">
+        <div class="metric">
+            <div class="metric-label">Points</div>
+            <div class="metric-value accent" id="m-count">0</div>
+        </div>
+        <div class="metric">
+            <div class="metric-label">Min</div>
+            <div class="metric-value" id="m-min">—</div>
+        </div>
+        <div class="metric">
+            <div class="metric-label">Max</div>
+            <div class="metric-value warn" id="m-max">—</div>
+        </div>
     </div>
-    <div class="chart-wrap">
-      <canvas id="chart"></canvas>
+
+    <div class="chart-card">
+        <div class="chart-header">
+            <span class="chart-title">Visualisation Temps-Réel</span>
+            <span class="chart-range" id="chart-range">—</span>
+        </div>
+        <div class="chart-wrap"><canvas id="chart"></canvas></div>
     </div>
-  </div>
 
-  <div class="btn-row">
-    <button id="btn-connect">Connecter</button>
-    <button id="btn-export" disabled>Manuel CSV</button>
-    <button id="btn-clear" title="Effacer données">✕</button>
-  </div>
-
-  <div class="log-card" id="csv-card">
-    <div class="log-header">
-      <span class="log-title">Données CSV</span>
-      <button id="btn-share" style="flex:0 0 auto;padding:4px 10px;font-size:10px;border-color:var(--accent2);color:var(--accent2)">Partager</button>
+    <div class="btn-row">
+        <button id="btn-connect">Connecter</button>
+        <button id="btn-export" disabled>Attente données</button>
+        <button id="btn-clear">✕</button>
     </div>
-    <textarea id="csv-output" readonly></textarea>
-  </div>
 
-  <div class="log-card">
-    <div class="log-header">
-      <span class="log-title">Console</span>
+    <div class="log-card" id="csv-card">
+        <div class="log-header">
+            <span class="log-title">Dernier Export CSV</span>
+            <button id="btn-share" style="padding:4px 8px; font-size:10px; color:var(--accent2); border-color:var(--accent2)">Partager</button>
+        </div>
+        <textarea id="csv-output" readonly></textarea>
     </div>
-    <div id="log"></div>
-  </div>
 
-  <footer>BLUEPILL LOGGER · OPEN IN BLUEFY</footer>
+    <div class="log-card">
+        <div class="log-header"><span class="log-title">Console Système</span></div>
+        <div id="log"></div>
+    </div>
+
+    <footer>OPEN IN BLUEFY FOR IOS</footer>
 </div>
 
 <script>
-// ── UUIDs BLE ────────────────────────────────────────────────────────────────
+// --- CONFIGURATION ---
 const SERVICE_UUID  = '00001809-0000-1000-8000-00805f9b34fb'; 
 const CHAR_HISTORY  = 'a838e31a-d72f-4a89-8a21-a47fd67da42f';
 
-// ── État global ──────────────────────────────────────────────────────────────
+// --- ÉTAT ---
 let temperatures = [];
 let device = null;
 let char = null;
 let chart = null;
-let dumpTimeout = null; // Timer pour détecter la fin du dump
-let savedDeviceName = "BluePill-Unknown"; // Sauvegarde persistante du nom
-
-// ── Chart setup ──────────────────────────────────────────────────────────────
-function initChart() {
-  const ctx = document.getElementById('chart').getContext('2d');
-  chart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: [],
-      datasets: [{
-        data: [],
-        borderColor: '#00d4ff',
-        borderWidth: 1.5,
-        pointRadius: 0,
-        fill: true,
-        backgroundColor: 'rgba(0,212,255,0.06)',
-        tension: 0.3
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      animation: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { display: false },
-        y: {
-          grid: { color: '#1e2a35' },
-          ticks: { color: '#4a6070', font: { family: 'IBM Plex Mono', size: 10 }, callback: v => v.toFixed(1) + '°' }
-        }
-      }
-    }
-  });
-}
-
-// ── Mise à jour interface ─────────────────────────────────────────────────────
-function updateMetrics() {
-  if (temperatures.length === 0) return;
-  const min = Math.min(...temperatures);
-  const max = Math.max(...temperatures);
-  document.getElementById('m-count').textContent = temperatures.length;
-  document.getElementById('m-min').innerHTML = min.toFixed(1) + '<span class="metric-unit">°C</span>';
-  document.getElementById('m-max').innerHTML = max.toFixed(1) + '<span class="metric-unit">°C</span>';
-
-  chart.data.labels   = temperatures.map((_, i) => i);
-  chart.data.datasets[0].data = temperatures;
-  chart.update();
-
-  const minutes = (temperatures.length - 1) * 5;
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  document.getElementById('chart-range').textContent =
-    temperatures.length > 1 ? (h > 0 ? `${h}h${m.toString().padStart(2,'0')}` : `${m} min`) : '—';
-
-  document.getElementById('btn-export').disabled = false;
-}
-
-function setStatus(state, text, deviceName) {
-  const dot = document.getElementById('dot');
-  dot.className = 'dot ' + state;
-  document.getElementById('status-text').textContent = text;
-  document.getElementById('device-name').textContent = deviceName || '';
-}
-
-function log(msg, cls) {
-  const el = document.getElementById('log');
-  const line = document.createElement('div');
-  if (cls) line.className = cls;
-  const t = new Date().toTimeString().slice(0,8);
-  line.textContent = `[${t}] ${msg}`;
-  el.appendChild(line);
-  el.scrollTop = el.scrollHeight;
-}
-
-// ── Réception données BLE ────────────────────────────────────────────────────
-function onIndication(event) {
-  const data = event.target.value;
-  const count = data.byteLength / 2;
-
-  for (let i = 0; i < count; i++) {
-    const raw = data.getInt16(i * 2, true);
-    temperatures.push(raw / 10.0);
-  }
-
-  log(`Reçu : ${temperatures.length} mesures...`, 'info');
-  updateMetrics();
-
-  // --- LOGIQUE DE FIN ---
-  clearTimeout(dumpTimeout); // On annule le précédent
-  dumpTimeout = setTimeout(() => {
-    // Si on a des données, on finit proprement
-    if (temperatures.length > 0) {
-      finishDumpAndDisconnect();
-    }
-  }, 3500); // On laisse 3.5s de silence pour être sûr que c'est fini
-}
-
-// ── Fin du Dump, Auto-Save et Déconnexion ────────────────────────────────────
-async function finishDumpAndDisconnect() {
-  log(`Dump terminé ! Total : ${temperatures.length} mesures.`, 'ok');
-  setStatus('connected', 'Dump terminé', device.name);
-  
-  // 1. Déclenche l'export et l'enregistrement automatique
-  await exportCSV(true);
-
-  // 2. Déconnexion automatique
-  log('Déconnexion automatique du logger...', 'warn');
-  await disconnect();
-}
-
-// ── Connexion BLE ────────────────────────────────────────────────────────────
-async function connect() {
-  try {
-    setStatus('connecting', 'Recherche...', '');
-    device = await navigator.bluetooth.requestDevice({
-      filters: [{ namePrefix: 'BluePill' }],
-      optionalServices: [SERVICE_UUID]
-    });
-
-    // --- CRUCIAL : On sauve le nom ici ---
-    savedDeviceName = device.name; 
-    log(`Appareil identifié : ${savedDeviceName}`, 'ok');
-
-    setStatus('connecting', 'Connexion...', savedDeviceName);
-    const server  = await device.gatt.connect();
-    const service = await server.getPrimaryService(SERVICE_UUID);
-    char          = await service.getCharacteristic(CHAR_HISTORY);
-
-    char.addEventListener('characteristicvaluechanged', onIndication);
-    await char.startNotifications();
-
-    log('Prêt pour le dump...', 'info');
-    setStatus('dumping', 'Attente données...', savedDeviceName);
-
-  } catch (err) {
-    log(`Erreur : ${err.message}`, 'warn');
-    setStatus('', 'Erreur', '');
-  }
-
-    device.addEventListener('gattserverdisconnected', onDisconnected);
-
-    const server  = await device.gatt.connect();
-    const service = await server.getPrimaryService(SERVICE_UUID);
-    char          = await service.getCharacteristic(CHAR_HISTORY);
-
-    log('Connecté. En attente des données...', 'ok');
-    setStatus('dumping', 'Réception données...', device.name);
-
-    char.addEventListener('characteristicvaluechanged', onIndication);
-    await char.startNotifications();
-
-    document.getElementById('btn-connect').textContent = 'Déconnecter';
-    document.getElementById('btn-connect').classList.add('active');
-
-    // Sécurité : si le logger est connecté mais n'envoie rien, on lance un timer
-    dumpTimeout = setTimeout(() => {
-        if(temperatures.length === 0) log("Aucune donnée reçue. Le logger est-il vide ?", "warn");
-    }, 5000);
-
-  } catch (err) {
-    log(`Erreur : ${err.message}`, 'warn');
-    setStatus('', 'Erreur', '');
-  }
-}
-
-function onDisconnected() {
-  log('Appareil déconnecté', 'warn');
-  setStatus('', 'Déconnecté', '');
-  document.getElementById('btn-connect').textContent = 'Connecter';
-  document.getElementById('btn-connect').classList.remove('active');
-  char = null;
-  device = null;
-  clearTimeout(dumpTimeout);
-}
-
-async function disconnect() {
-  if (device && device.gatt.connected) {
-    await device.gatt.disconnect();
-  }
-}
-
-// ── Export CSV Automatique et Manuel ─────────────────────────────────────────
+let savedDeviceName = "BluePill-Unknown";
 let lastCSV = '';
 let lastFilename = '';
 
-async function exportCSV(isAuto = false) {
-  if (temperatures.length === 0) return;
-
-  const intervalMin = 5;
-  const dumpTime = new Date();
-  
-  // On récupère le nom complet (ex: BluePill-F4A2) ou "Unknown" par défaut
-  const fullName = savedDeviceName; // Plus de "Unknown" !
-  
-  // Nettoyage du nom pour le système de fichier
-  const safeName = fullName.replace(/[^a-zA-Z0-9-]/g, '_');
-
-  // Formatage Date et Heure pour le nom de fichier (Ex: 2026-03-25_14h30)
-  const dateStr = dumpTime.toISOString().slice(0, 10); // 2026-03-25
-  const timeStr = dumpTime.getHours() + 'h' + dumpTime.getMinutes().toString().padStart(2, '0');
-  
-  lastFilename = `${safeName}_${dateStr}_${timeStr}.csv`;
-
-  // --- CONSTRUCTION DU CONTENU DU FICHIER ---
-  let csv = `----------------------------------------\n`;
-  csv += `LOGGER ID      : ${fullName}\n`; // Affiche BluePill-F4A2
-  csv += `DATE DUMP      : ${dumpTime.toLocaleString('fr-FR')}\n`;
-  csv += `NB MESURES     : ${temperatures.length}\n`;
-  csv += `INTERVALLE     : ${intervalMin} min\n`;
-  csv += `----------------------------------------\n`;
-  csv += `index;timestamp;temperature_C\n`;
-
-  // Génération des lignes avec timestamp inversé (-5 min par point)
-  temperatures.forEach((t, i) => {
-    // Le dernier point est "maintenant", on remonte le temps
-    const pointsFromEnd = (temperatures.length - 1) - i;
-    const ts = new Date(dumpTime.getTime() - (pointsFromEnd * intervalMin * 60000));
-    
-    // Format français DD/MM/YYYY HH:mm:ss
-    const tsString = ts.toLocaleString('fr-FR').replace(',', '');
-    
-    csv += `${i};${tsString};${t.toFixed(1)}\n`;
-  });
-
-  lastCSV = csv;
-
-  // Affichage et téléchargement automatique
-  const area = document.getElementById('csv-output');
-  document.getElementById('csv-card').style.display = 'block';
-  area.value = csv;
-  
-  try {
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", lastFilename);
-    link.click();
-    if (isAuto) log(`Fichier enregistré : ${lastFilename}`, 'ok');
-  } catch(e) {
-    log(`Erreur d'enregistrement auto.`, 'warn');
-  }
+// --- INITIALISATION GRAPHIQUE ---
+function initChart() {
+    const ctx = document.getElementById('chart').getContext('2d');
+    chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                data: [],
+                borderColor: '#00d4ff',
+                borderWidth: 2,
+                pointRadius: 0,
+                fill: true,
+                backgroundColor: 'rgba(0,212,255,0.05)',
+                tension: 0.3
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { display: false },
+                y: { grid: { color: '#1e2a35' }, ticks: { color: '#4a6070', font: { family: 'IBM Plex Mono' } } }
+            }
+        }
+    });
 }
 
-document.getElementById('btn-share').addEventListener('click', async () => {
-  if (!lastCSV) return;
-  const file = new File([lastCSV], lastFilename, { type: 'text/csv' });
-  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+// --- LOGIQUE BLUETOOTH ---
+async function connect() {
     try {
-      await navigator.share({ files: [file], title: lastFilename });
-      log('Partage ouvert', 'ok');
-    } catch (e) {
-      log('Partage annulé', 'warn');
+        log("Recherche d'un appareil BluePill...", "info");
+        setStatus('connecting', 'Scan...', '');
+
+        device = await navigator.bluetooth.requestDevice({
+            filters: [{ namePrefix: 'BluePill' }],
+            optionalServices: [SERVICE_UUID]
+        });
+
+        savedDeviceName = device.name;
+        log(`Appareil sélectionné : ${savedDeviceName}`, "ok");
+        setStatus('connecting', 'Liaison...', savedDeviceName);
+
+        device.addEventListener('gattserverdisconnected', onDisconnected);
+
+        const server = await device.gatt.connect();
+        const service = await server.getPrimaryService(SERVICE_UUID);
+        char = await service.getCharacteristic(CHAR_HISTORY);
+
+        char.addEventListener('characteristicvaluechanged', onIndication);
+        await char.startNotifications();
+
+        log("Liaison établie. Réception active.", "ok");
+        setStatus('dumping', 'Réception...', savedDeviceName);
+        
+        document.getElementById('btn-connect').textContent = 'Déconnecter';
+        document.getElementById('btn-connect').classList.add('active');
+
+    } catch (err) {
+        log(`Erreur : ${err.message}`, "warn");
+        setStatus('', 'Erreur', '');
     }
-  } else {
-    // Fallback PC/Android si share() n'est pas dispo
-    exportCSV(false);
-  }
-});
+}
 
-// ── Listeners boutons ────────────────────────────────────────────────────────
+function onIndication(event) {
+    const data = event.target.value;
+    const count = data.byteLength / 2;
+
+    for (let i = 0; i < count; i++) {
+        const raw = data.getInt16(i * 2, true);
+        temperatures.push(raw / 10.0);
+    }
+
+    updateUI();
+}
+
+function updateUI() {
+    if (temperatures.length === 0) return;
+
+    // Metrics
+    const min = Math.min(...temperatures);
+    const max = Math.max(...temperatures);
+    document.getElementById('m-count').textContent = temperatures.length;
+    document.getElementById('m-min').textContent = min.toFixed(1) + "°C";
+    document.getElementById('m-max').textContent = max.toFixed(1) + "°C";
+
+    // Chart
+    chart.data.labels = temperatures.map((_, i) => i);
+    chart.data.datasets[0].data = temperatures;
+    chart.update();
+
+    // Bouton Export
+    const btnExp = document.getElementById('btn-export');
+    btnExp.disabled = false;
+    btnExp.classList.add('ready');
+    btnExp.textContent = "Finaliser & Exporter";
+    
+    // Range
+    const mins = (temperatures.length - 1) * 5;
+    document.getElementById('chart-range').textContent = `Couverture : ${Math.floor(mins/60)}h${(mins%60).toString().padStart(2,'0')}`;
+}
+
+async function exportCSV() {
+    if (temperatures.length === 0) return;
+
+    log("Génération du rapport CSV...", "info");
+    const now = new Date();
+    const dateStr = now.toISOString().slice(0, 10);
+    const timeStr = now.getHours() + 'h' + now.getMinutes().toString().padStart(2, '0');
+    
+    lastFilename = `${savedDeviceName.replace(/[^a-z0-9]/gi, '_')}_${dateStr}_${timeStr}.csv`;
+
+    let csv = `ID LOGGER;${savedDeviceName}\n`;
+    csv += `DATE DUMP;${now.toLocaleString('fr-FR')}\n`;
+    csv += `POINTS;${temperatures.length}\n`;
+    csv += `----------------------------------------\n`;
+    csv += `index;timestamp;temp_c\n`;
+
+    temperatures.forEach((t, i) => {
+        const offset = (temperatures.length - 1 - i) * 5 * 60000;
+        const ts = new Date(now.getTime() - offset);
+        csv += `${i};${ts.toLocaleString('fr-FR').replace(',','')};${t.toFixed(1)}\n`;
+    });
+
+    lastCSV = csv;
+    document.getElementById('csv-output').value = csv;
+    document.getElementById('csv-card').style.display = 'block';
+
+    // Téléchargement
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = lastFilename;
+    a.click();
+
+    log("Export réussi. Déconnexion de l'unité.", "ok");
+    
+    // DÉCONNEXION FINALE
+    if (device && device.gatt.connected) {
+        await device.gatt.disconnect();
+    }
+}
+
+function onDisconnected() {
+    log("Unité déconnectée.", "warn");
+    setStatus('', 'Déconnecté', '');
+    document.getElementById('btn-connect').textContent = 'Connecter';
+    document.getElementById('btn-connect').classList.remove('active');
+    char = null;
+    device = null;
+}
+
+// --- HELPERS ---
+function setStatus(state, text, devName) {
+    document.getElementById('dot').className = 'dot ' + state;
+    document.getElementById('status-text').textContent = text;
+    document.getElementById('device-name').textContent = devName;
+}
+
+function log(msg, cls) {
+    const div = document.createElement('div');
+    if(cls) div.className = cls;
+    div.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+    const container = document.getElementById('log');
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+}
+
+// --- LISTENERS ---
 document.getElementById('btn-connect').addEventListener('click', () => {
-  if (device && device.gatt.connected) disconnect();
-  else connect();
+    if (device && device.gatt.connected) device.gatt.disconnect();
+    else connect();
 });
 
-document.getElementById('btn-export').addEventListener('click', () => exportCSV(false));
+document.getElementById('btn-export').addEventListener('click', exportCSV);
 
 document.getElementById('btn-clear').addEventListener('click', () => {
-  if (!confirm('Effacer toutes les données affichées ?')) return;
-  temperatures = [];
-  chart.data.labels = [];
-  chart.data.datasets[0].data = [];
-  chart.update();
-  document.getElementById('m-count').textContent = '—';
-  document.getElementById('m-min').innerHTML = '—';
-  document.getElementById('m-max').innerHTML = '—';
-  document.getElementById('chart-range').textContent = '—';
-  document.getElementById('btn-export').disabled = true;
-  document.getElementById('csv-card').style.display = 'none';
-  log('Interface remise à zéro.', 'warn');
+    if (!confirm("Effacer les données actuelles ?")) return;
+    temperatures = [];
+    chart.data.labels = [];
+    chart.data.datasets[0].data = [];
+    chart.update();
+    document.getElementById('m-count').textContent = "0";
+    document.getElementById('csv-card').style.display = 'none';
+    log("Mémoire interface vidée.", "warn");
 });
 
-// ── Init ─────────────────────────────────────────────────────────────────────
+document.getElementById('btn-share').addEventListener('click', async () => {
+    const file = new File([lastCSV], lastFilename, { type: 'text/csv' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: lastFilename });
+    }
+});
+
 initChart();
-log('Système prêt. Adresse MAC protégée par navigateur (utilisation du Nom/ID).', 'info');
-log('Appuie sur Connecter pour démarrer.', 'ok');
 </script>
 </body>
 </html>
