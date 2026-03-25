@@ -328,6 +328,7 @@ let device = null;
 let char = null;
 let chart = null;
 let dumpTimeout = null; // Timer pour détecter la fin du dump
+let savedDeviceName = "BluePill-Unknown"; // Sauvegarde persistante du nom
 
 // ── Chart setup ──────────────────────────────────────────────────────────────
 function initChart() {
@@ -411,12 +412,17 @@ function onIndication(event) {
     temperatures.push(raw / 10.0);
   }
 
-  log(`Batch reçu : ${count} valeurs...`, 'info');
+  log(`Reçu : ${temperatures.length} mesures...`, 'info');
   updateMetrics();
 
-  // Reset le timer de fin de dump à chaque nouveau paquet reçu
-  clearTimeout(dumpTimeout);
-  dumpTimeout = setTimeout(finishDumpAndDisconnect, 2500); // Si rien après 2.5s -> C'est fini !
+  // --- LOGIQUE DE FIN ---
+  clearTimeout(dumpTimeout); // On annule le précédent
+  dumpTimeout = setTimeout(() => {
+    // Si on a des données, on finit proprement
+    if (temperatures.length > 0) {
+      finishDumpAndDisconnect();
+    }
+  }, 3500); // On laisse 3.5s de silence pour être sûr que c'est fini
 }
 
 // ── Fin du Dump, Auto-Save et Déconnexion ────────────────────────────────────
@@ -436,15 +442,30 @@ async function finishDumpAndDisconnect() {
 async function connect() {
   try {
     setStatus('connecting', 'Recherche...', '');
-    log('Scan BLE en cours...', 'info');
-
     device = await navigator.bluetooth.requestDevice({
       filters: [{ namePrefix: 'BluePill' }],
       optionalServices: [SERVICE_UUID]
     });
 
-    log(`Appareil trouvé : ${device.name}`, 'ok');
-    setStatus('connecting', 'Connexion...', device.name);
+    // --- CRUCIAL : On sauve le nom ici ---
+    savedDeviceName = device.name; 
+    log(`Appareil identifié : ${savedDeviceName}`, 'ok');
+
+    setStatus('connecting', 'Connexion...', savedDeviceName);
+    const server  = await device.gatt.connect();
+    const service = await server.getPrimaryService(SERVICE_UUID);
+    char          = await service.getCharacteristic(CHAR_HISTORY);
+
+    char.addEventListener('characteristicvaluechanged', onIndication);
+    await char.startNotifications();
+
+    log('Prêt pour le dump...', 'info');
+    setStatus('dumping', 'Attente données...', savedDeviceName);
+
+  } catch (err) {
+    log(`Erreur : ${err.message}`, 'warn');
+    setStatus('', 'Erreur', '');
+  }
 
     device.addEventListener('gattserverdisconnected', onDisconnected);
 
@@ -499,7 +520,7 @@ async function exportCSV(isAuto = false) {
   const dumpTime = new Date();
   
   // On récupère le nom complet (ex: BluePill-F4A2) ou "Unknown" par défaut
-  const fullName = (device && device.name) ? device.name : 'BluePill-Unknown';
+  const fullName = savedDeviceName; // Plus de "Unknown" !
   
   // Nettoyage du nom pour le système de fichier
   const safeName = fullName.replace(/[^a-zA-Z0-9-]/g, '_');
