@@ -2,328 +2,239 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>BluePill Logger - Robust</title>
 <script src="chart.umd.js"></script>
 <style>
-        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap');
 
-        :root {
-            --bg: #0a0e14;
-            --surface: #111820;
-            --border: #1e2a35;
-            --accent: #00d4ff;
-            --accent2: #00ff9d;
-            --warn: #ff6b35;
-            --text: #c8d8e8;
-            --muted: #4a6070;
-            --mono: 'IBM Plex Mono', monospace;
-            --sans: 'IBM Plex Sans', sans-serif;
-        }
+:root {
+    --bg: #0a0e14;
+    --surface: #111820;
+    --border: #1e2a35;
+    --accent: #00d4ff;
+    --accent2: #00ff9d;
+    --warn: #ff6b35;
+    --text: #c8d8e8;
+    --muted: #4a6070;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+}
 
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
-        body {
-            background: var(--bg);
-            color: var(--text);
-            font-family: var(--sans);
-            min-height: 100vh;
-            overflow-x: hidden;
-        }
+body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+}
 
-        body::before {
-            content: '';
-            position: fixed;
-            inset: 0;
-            background:
-                repeating-linear-gradient(0deg, transparent, transparent 39px, var(--border) 39px, var(--border) 40px),
-                repeating-linear-gradient(90deg, transparent, transparent 39px, var(--border) 39px, var(--border) 40px);
-            opacity: 0.25;
-            pointer-events: none;
-            z-index: 0;
-        }
+body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+        repeating-linear-gradient(0deg, transparent, transparent 39px, var(--border) 39px, var(--border) 40px),
+        repeating-linear-gradient(90deg, transparent, transparent 39px, var(--border) 39px, var(--border) 40px);
+    opacity: 0.25;
+    pointer-events: none;
+    z-index: 0;
+}
 
-        .app { position: relative; z-index: 1; max-width: 480px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+.app { position: relative; z-index: 1; max-width: 480px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
 
-        header { margin-bottom: 2rem; }
-        .logo {
-            font-family: var(--mono);
-            font-size: 11px;
-            font-weight: 600;
-            letter-spacing: 0.2em;
-            color: var(--accent);
-            text-transform: uppercase;
-            margin-bottom: 4px;
-        }
-        h1 { font-family: var(--mono); font-size: 28px; font-weight: 600; color: #fff; letter-spacing: -0.02em; }
-        h1 span { color: var(--accent2); }
+header { margin-bottom: 2rem; }
+.logo {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+}
+h1 { font-family: var(--mono); font-size: 28px; font-weight: 600; color: #fff; letter-spacing: -0.02em; }
+h1 span { color: var(--accent2); }
 
-        .status-bar {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 10px 14px;
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            margin-bottom: 1.5rem;
-            font-family: var(--mono);
-            font-size: 12px;
-        }
-        .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); transition: background 0.3s; }
-        .dot.connected { background: var(--accent2); box-shadow: 0 0 6px var(--accent2); animation: pulse 2s infinite; }
-        .dot.connecting { background: var(--accent); animation: blink 0.6s infinite; }
-        .dot.dumping { background: var(--warn); animation: blink 0.4s infinite; }
-        
-        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
-        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+.status-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    font-family: var(--mono);
+    font-size: 12px;
+}
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.dot.connected { background: var(--accent2); }
+.dot.connecting { background: var(--accent); }
+.dot.dumping { background: var(--warn); }
 
-        #status-text { color: var(--text); flex: 1; }
-        #device-name { color: var(--muted); font-size: 10px; }
+.metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 1.5rem; }
+.metric { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+.metric-label { font-family: var(--mono); font-size: 9px; color: var(--muted); }
+.metric-value { font-family: var(--mono); font-size: 20px; }
+.metric-value.accent { color: var(--accent); }
+.metric-value.warn { color: var(--warn); }
 
-        .metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 1.5rem; }
-        .metric { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
-        .metric-label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.15em; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; }
-        .metric-value { font-family: var(--mono); font-size: 20px; font-weight: 600; color: #fff; line-height: 1; }
-        .metric-value.accent { color: var(--accent); }
-        .metric-value.warn { color: var(--warn); }
-        .metric-unit { font-size: 11px; color: var(--muted); margin-left: 2px; }
+.chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 1.5rem; }
+.chart-wrap { height: 180px; }
 
-        .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 1.5rem; }
-        .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-        .chart-title { font-family: var(--mono); font-size: 10px; color: var(--muted); text-transform: uppercase; }
-        .chart-range { font-family: var(--mono); font-size: 10px; color: var(--accent); }
-        .chart-wrap { position: relative; height: 180px; }
+.btn-row { display: flex; gap: 8px; margin-bottom: 1.5rem; }
+button {
+    flex: 1; padding: 14px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--surface); color: var(--text); font-family: var(--mono);
+}
+#btn-connect { border-color: var(--accent); color: var(--accent); }
+#btn-export.ready { border-color: var(--accent2); color: var(--accent2); }
 
-        .btn-row { display: flex; gap: 8px; margin-bottom: 1.5rem; }
-        button {
-            flex: 1; padding: 14px; border: 1px solid var(--border); border-radius: 8px;
-            background: var(--surface); color: var(--text); font-family: var(--mono);
-            font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s;
-        }
-        button:active { transform: scale(0.97); }
-        #btn-connect { border-color: var(--accent); color: var(--accent); }
-        #btn-connect.active { background: var(--accent); color: var(--bg); }
-        #btn-export { border-color: var(--muted); color: var(--muted); }
-        #btn-export.ready { border-color: var(--accent2); color: var(--accent2); }
+.log-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 1rem; }
+#log { font-family: var(--mono); font-size: 11px; padding: 12px; height: 140px; overflow-y: auto; }
 
-        .log-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 1rem; }
-        .log-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--border); }
-        .log-title { font-family: var(--mono); font-size: 10px; color: var(--muted); text-transform: uppercase; }
-        #log { font-family: var(--mono); font-size: 11px; color: var(--muted); padding: 12px 14px; height: 120px; overflow-y: auto; line-height: 1.6; }
-        #log .ok { color: var(--accent2); }
-        #log .info { color: var(--accent); }
-        #log .warn { color: var(--warn); }
-
-        #csv-card { display: none; }
-        #csv-output { width: 100%; height: 150px; background: #000; color: var(--accent2); font-family: var(--mono); font-size: 10px; border: none; padding: 12px; resize: none; }
-
-        footer { text-align: center; font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 2rem; }
-    </style>
+</style>
 </head>
 <body>
 <div class="app">
-    <header>
-        <div class="logo">Firmware v2.1 · BLE 5.0</div>
-        <h1>Blue<span>Pill</span></h1>
-    </header>
+<header>
+<div class="logo">Firmware v2.1 · BLE 5.0</div>
+<h1>Blue<span>Pill</span></h1>
+</header>
 
-    <div class="status-bar">
-        <div class="dot" id="dot"></div>
-        <span id="status-text">Prêt</span>
-        <span id="device-name"></span>
-    </div>
-
-    <div class="metrics">
-        <div class="metric">
-            <div class="metric-label">Points</div>
-            <div class="metric-value accent" id="m-count">0</div>
-        </div>
-        <div class="metric">
-            <div class="metric-label">Min</div>
-            <div class="metric-value" id="m-min">—</div>
-        </div>
-        <div class="metric">
-            <div class="metric-label">Max</div>
-            <div class="metric-value warn" id="m-max">—</div>
-        </div>
-    </div>
-
-    <div class="chart-card">
-        <div class="chart-header">
-            <span class="chart-title">Visualisation Temps-Réel</span>
-            <span class="chart-range" id="chart-range">—</span>
-        </div>
-        <div class="chart-wrap"><canvas id="chart"></canvas></div>
-    </div>
-
-    <div class="btn-row">
-        <button id="btn-connect">Connecter</button>
-        <button id="btn-export" disabled>Attente données</button>
-    </div>
-
-    <div class="log-card" id="csv-card">
-        <div class="log-header">
-            <span class="log-title">Dernier Export CSV</span>
-            <button id="btn-share" style="padding:4px 8px; font-size:10px; color:var(--accent2); border-color:var(--accent2)">Partager</button>
-        </div>
-        <textarea id="csv-output" readonly></textarea>
-    </div>
-
-    <div class="log-card">
-        <div class="log-header"><span class="log-title">Console Système</span></div>
-        <div id="log"></div>
-    </div>
-
-    <footer>RECHARGER LA PAGE POUR RESET · BLUEFY APP</footer>
+<div class="status-bar">
+<div class="dot" id="dot"></div>
+<span id="status-text">Prêt</span>
+<span id="device-name"></span>
 </div>
+
+<div class="metrics">
+<div class="metric"><div class="metric-label">Points</div><div class="metric-value accent" id="m-count">0</div></div>
+<div class="metric"><div class="metric-label">Min</div><div class="metric-value" id="m-min">—</div></div>
+<div class="metric"><div class="metric-label">Max</div><div class="metric-value warn" id="m-max">—</div></div>
+</div>
+
+<div class="chart-card">
+<div class="chart-wrap"><canvas id="chart"></canvas></div>
+</div>
+
+<div class="btn-row">
+<button id="btn-connect">Connecter</button>
+<button id="btn-export" disabled>Exporter</button>
+</div>
+
+<div class="log-card">
+<div id="log"></div>
+</div>
+
 <script>
 const SERVICE_UUID  = '00001809-0000-1000-8000-00805f9b34fb'; 
 const CHAR_HISTORY  = 'a838e31a-d72f-4a89-8a21-a47fd67da42f';
 
-let device = null;
-let char = null;
-let temperatures = [];
-let lastPacketTime = null;
-let expectedInterval = 200; // ms estimé
-let packetCount = 0;
-let lostWarnings = 0;
+let device=null, char=null, temperatures=[];
+let lastPacketTime=null, lostWarnings=0, packetCount=0;
 let chart;
 
-function log(msg, type="INFO") {
-  const el = document.getElementById('log');
-  const line = `[${new Date().toLocaleTimeString()}][${type}] ${msg}`;
-  el.innerHTML += line + "<br>";
-  el.scrollTop = el.scrollHeight;
+function log(msg,type="INFO"){
+ const el=document.getElementById('log');
+ el.innerHTML+=`[${new Date().toLocaleTimeString()}][${type}] ${msg}<br>`;
+ el.scrollTop=el.scrollHeight;
 }
 
 function initChart(){
-  const ctx = document.getElementById('chart');
-  chart = new Chart(ctx, {
-    type:'line',
-    data:{labels:[], datasets:[{data:[], borderWidth:1}]},
-    options:{animation:false}
-  });
+ chart=new Chart(document.getElementById('chart'),{
+  type:'line',
+  data:{labels:[],datasets:[{data:[],borderWidth:2}]},
+  options:{animation:false}
+ });
 }
 
 async function connect(){
-  try{
-    log("Scan...");
+ try{
+  log("Scan...");
+  device=await navigator.bluetooth.requestDevice({filters:[{namePrefix:'BluePill'}],optionalServices:[SERVICE_UUID]});
+  device.addEventListener('gattserverdisconnected',onDisconnected);
 
-    device = await navigator.bluetooth.requestDevice({
-      filters:[{namePrefix:'BluePill'}],
-      optionalServices:[SERVICE_UUID]
-    });
+  const server=await device.gatt.connect();
+  log("GATT connecté");
 
-    log("Device: " + device.name);
+  const service=await server.getPrimaryService(SERVICE_UUID);
+  char=await service.getCharacteristic(CHAR_HISTORY);
 
-    device.addEventListener('gattserverdisconnected', onDisconnected);
+  await char.startNotifications();
+  char.addEventListener('characteristicvaluechanged',onData);
 
-    const server = await device.gatt.connect();
-    log("GATT connecté");
+  log("Notifications ON");
 
-    const service = await server.getPrimaryService(SERVICE_UUID);
-    log("Service OK");
-
-    char = await service.getCharacteristic(CHAR_HISTORY);
-    log("Characteristic OK");
-
-    await char.startNotifications();
-    log("Notifications ON");
-
-    char.addEventListener('characteristicvaluechanged', onData);
-
-  }catch(e){
-    log("Erreur: "+e.message, "ERR");
-  }
+ }catch(e){log(e.message,"ERR");}
 }
 
-function onData(event){
-  const now = Date.now();
-  const dv = event.target.value;
-  const count = dv.byteLength / 2;
+function onData(e){
+ const now=Date.now();
+ const dv=e.target.value;
+ const count=dv.byteLength/2;
+ packetCount++;
 
-  packetCount++;
+ if(lastPacketTime && (now-lastPacketTime)>600){
+  lostWarnings++;
+  log("⚠ GAP détecté","WARN");
+ }
+ lastPacketTime=now;
 
-  // Detection de trous timing
-  if(lastPacketTime){
-    const dt = now - lastPacketTime;
-    if(dt > expectedInterval * 3){
-      lostWarnings++;
-      log(`⚠ GAP détecté: ${dt}ms`, "WARN");
-    }
-  }
-  lastPacketTime = now;
+ log(`RX #${packetCount} (${count} samples)`);
 
-  log(`RX packet #${packetCount} (${count} samples)`);
+ for(let i=0;i<count;i++){
+  const t=dv.getInt16(i*2,true)/10;
+  if(t<-50||t>150) log("Valeur aberrante","WARN");
+  temperatures.push(t);
+ }
 
-  for(let i=0;i<count;i++){
-    const raw = dv.getInt16(i*2,true);
-    const temp = raw/10;
-
-    // sanity check
-    if(temp < -50 || temp > 150){
-      log("Valeur aberrante: "+temp, "WARN");
-    }
-
-    temperatures.push(temp);
-  }
-
-  updateChart();
-  document.getElementById('btn-export').disabled = false;
+ updateUI();
+ document.getElementById('btn-export').disabled=false;
 }
 
-function updateChart(){
-  const MAX = 2000;
-  const data = temperatures.slice(-MAX);
+function updateUI(){
+ if(!temperatures.length) return;
 
-  chart.data.labels = data.map((_,i)=>i);
-  chart.data.datasets[0].data = data;
-  chart.update();
+ document.getElementById('m-count').textContent=temperatures.length;
+ document.getElementById('m-min').textContent=Math.min(...temperatures).toFixed(1);
+ document.getElementById('m-max').textContent=Math.max(...temperatures).toFixed(1);
+
+ const data=temperatures.slice(-2000);
+ chart.data.labels=data.map((_,i)=>i);
+ chart.data.datasets[0].data=data;
+ chart.update();
 }
 
 function exportCSV(){
-  if(temperatures.length === 0) return;
+ let csv="index,temp\n";
+ temperatures.forEach((t,i)=>csv+=`${i},${t}\n`);
 
-  let csv = "index,temp\n";
-  temperatures.forEach((t,i)=>{
-    csv += `${i},${t}\n`;
-  });
+ const blob=new Blob([csv]);
+ const a=document.createElement('a');
+ a.href=URL.createObjectURL(blob);
+ a.download="dump.csv";
+ a.click();
 
-  const blob = new Blob([csv]);
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = "dump.csv";
-  a.click();
+ log(`Export ${temperatures.length} pts`);
+ if(lostWarnings>0) log("⚠ pertes possibles","WARN");
 
-  log(`Export OK (${temperatures.length} points)`);
-
-  if(lostWarnings>0){
-    log(`⚠ ${lostWarnings} anomalies détectées`, "WARN");
-  } else {
-    log("Aucune perte détectée (heuristique)");
-  }
-
-  if(device && device.gatt.connected){
-    device.gatt.disconnect();
-  }
+ if(device?.gatt.connected) device.gatt.disconnect();
 }
 
 function onDisconnected(){
-  log("Déconnecté", "WARN");
-
-  if(temperatures.length>0){
-    log("⚠ Dump potentiellement incomplet", "WARN");
-  }
+ log("Déconnecté","WARN");
+ if(temperatures.length) log("⚠ dump incomplet","WARN");
 }
 
-document.getElementById('btn-connect').onclick = ()=>{
-  if(device && device.gatt.connected){
-    device.gatt.disconnect();
-  } else connect();
+document.getElementById('btn-connect').onclick=()=>{
+ device?.gatt.connected?device.gatt.disconnect():connect();
 };
 
-document.getElementById('btn-export').onclick = exportCSV;
+document.getElementById('btn-export').onclick=exportCSV;
 
 initChart();
 </script>
