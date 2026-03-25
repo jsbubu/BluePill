@@ -1,14 +1,19 @@
-const CACHE = 'bluepill-v1';
-const FILES = ['/', '/index.html'];
+const CACHE_NAME = "bluepill-v1";
+const ASSETS = [
+  "./",
+  "./index.html",
+  "./chart.umd.js",
+  "./manifest.json"
+];
 
-self.addEventListener('install', e => {
+self.addEventListener("install", e => {
   e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(FILES))
+    caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS))
   );
 });
 
-self.addEventListener('fetch', e => {
+self.addEventListener("fetch", e => {
   e.respondWith(
-    caches.match(e.request).then(r => r || fetch(e.request))
+    caches.match(e.request).then(res => res || fetch(e.request))
   );
 });
