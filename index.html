@@ -140,6 +140,24 @@ const CHAR_HISTORY  = 'a838e31a-d72f-4a89-8a21-a47fd67da42f';
 let device=null, char=null, temperatures=[];
 let lastPacketTime=null, lostWarnings=0, packetCount=0;
 let chart;
+// 1. Min/Max robuste sans spread
+let tempMin = Infinity, tempMax = -Infinity;
+function updateMinMax(t) {
+  if (t < tempMin) tempMin = t;
+  if (t > tempMax) tempMax = t;
+}
+// 2. Gap warning seuil réaliste
+const GAP_THRESHOLD_MS = 4000;
+
+// 3. Détection fin de dump
+let dumpTimer = null;
+function resetDumpTimer() {
+  if (dumpTimer) clearTimeout(dumpTimer);
+  dumpTimer = setTimeout(() => {
+    log(`Dump probablement terminé — ${temperatures.length} mesures`, 'OK');
+    setStatus('connected', 'Dump terminé', device?.name);
+  }, 3000);
+}
 
 function log(msg,type="INFO"){
  const el=document.getElementById('log');
@@ -174,30 +192,37 @@ async function connect(){
 
  }catch(e){log(e.message,"ERR");}
 }
+// 5. Dans onData — appel resetDumpTimer
+function onData(e) {
+  const now = Date.now();
+  const dv = e.target.value;
+  const count = dv.byteLength / 2;
+  packetCount++;
 
-function onData(e){
- const now=Date.now();
- const dv=e.target.value;
- const count=dv.byteLength/2;
- packetCount++;
+  if (lastPacketTime && (now - lastPacketTime) > GAP_THRESHOLD_MS) {
+    lostWarnings++;
+    log('Gap détecté — possible perte de données', 'WARN');
+  }
+  lastPacketTime = now;
+  log(`RX #${packetCount} — ${count} valeurs (total : ${temperatures.length + count})`);
 
- if(lastPacketTime && (now-lastPacketTime)>600){
-  lostWarnings++;
-  log("⚠ GAP détecté","WARN");
- }
- lastPacketTime=now;
+  for (let i = 0; i < count; i++) {
+    const t = dv.getInt16(i * 2, true) / 10;
+    if (t < -50 || t > 150) {
+      log(`Valeur aberrante ignorée : ${t}°C`, 'WARN');
+      continue;
+    }
+    temperatures.push(t);
+    updateMinMax(t);
+  }
 
- log(`RX #${packetCount} (${count} samples)`);
-
- for(let i=0;i<count;i++){
-  const t=dv.getInt16(i*2,true)/10;
-  if(t<-50||t>150) log("Valeur aberrante","WARN");
-  temperatures.push(t);
- }
-
- updateUI();
- document.getElementById('btn-export').disabled=false;
+  resetDumpTimer();
+  updateUI();
+  document.getElementById('btn-export').disabled = false;
 }
+
+Tu veux que je génère le fichier HTML complet avec toutes ces corrections intégrées ?
+
 
 function updateUI(){
  if(!temperatures.length) return;
@@ -211,21 +236,31 @@ function updateUI(){
  chart.data.datasets[0].data=data;
  chart.update();
 }
+// 4. Export iOS/Android
+function exportCSV() {
+  const intervalMin = 5;
+  const now = new Date();
+  const start = new Date(now - (temperatures.length - 1) * intervalMin * 60000);
+  let csv = 'index,timestamp_estime,temperature_C\n';
+  temperatures.forEach((t, i) => {
+    const ts = new Date(start.getTime() + i * intervalMin * 60000);
+    csv += `${i},${ts.toISOString().slice(0,19).replace('T',' ')},${t.toFixed(1)}\n`;
+  });
 
-function exportCSV(){
- let csv="index,temp\n";
- temperatures.forEach((t,i)=>csv+=`${i},${t}\n`);
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const file = new File([csv], `bluepill_${now.toISOString().slice(0,10)}.csv`,
+                        { type: 'text/plain' });
 
- const blob=new Blob([csv]);
- const a=document.createElement('a');
- a.href=URL.createObjectURL(blob);
- a.download="dump.csv";
- a.click();
-
- log(`Export ${temperatures.length} pts`);
- if(lostWarnings>0) log("⚠ pertes possibles","WARN");
-
- if(device?.gatt.connected) device.gatt.disconnect();
+  if (isIOS && navigator.canShare?.({ files: [file] })) {
+    navigator.share({ files: [file], title: 'BluePill CSV' });
+  } else {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+    a.download = file.name;
+    a.click();
+  }
+  if (lostWarnings > 0)
+    log(`Attention : ${lostWarnings} gaps détectés — données peut-être incomplètes`, 'WARN');
 }
 
 function onDisconnected(){
