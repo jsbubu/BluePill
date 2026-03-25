@@ -176,9 +176,21 @@ function updateMinMax(t) {
 // ---------- DUMP TIMER ----------
 function resetDumpTimer() {
   if (dumpTimer) clearTimeout(dumpTimer);
+
   dumpTimer = setTimeout(() => {
+
+    // ❗ Vérifie qu'on est encore connecté
+    if (!device?.gatt?.connected) {
+      log("Timer annulé (déjà déconnecté)", "INFO");
+      return;
+    }
+
     log(`Dump terminé — ${temperatures.length} mesures`, 'OK');
     setStatus('connected', 'Dump terminé', device?.name);
+
+    log("Déconnexion automatique", "INFO");
+    device.gatt.disconnect();
+
   }, DUMP_TIMEOUT_MS);
 }
 
@@ -308,7 +320,10 @@ function exportCSV() {
 function onDisconnected(){
  log("Déconnecté","WARN");
  setStatus('',"Déconnecté");
-
+ if (dumpTimer) {
+  clearTimeout(dumpTimer);
+  dumpTimer = null;
+ }
  if(temperatures.length)
    log("⚠ dump incomplet","WARN");
 }
