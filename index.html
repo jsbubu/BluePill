@@ -106,7 +106,6 @@
         #btn-connect.active { background: var(--accent); color: var(--bg); }
         #btn-export { border-color: var(--muted); color: var(--muted); }
         #btn-export.ready { border-color: var(--accent2); color: var(--accent2); }
-        #btn-clear { border-color: var(--warn); color: var(--warn); flex: 0 0 auto; padding: 14px 16px; }
 
         .log-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 1rem; }
         .log-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--border); }
@@ -161,7 +160,6 @@
     <div class="btn-row">
         <button id="btn-connect">Connecter</button>
         <button id="btn-export" disabled>Attente données</button>
-        <button id="btn-clear">✕</button>
     </div>
 
     <div class="log-card" id="csv-card">
@@ -177,7 +175,7 @@
         <div id="log"></div>
     </div>
 
-    <footer>OPEN IN BLUEFY FOR IOS</footer>
+    <footer>RECHARGER LA PAGE POUR RESET · BLUEFY APP</footer>
 </div>
 
 <script>
@@ -227,7 +225,7 @@ function initChart() {
 // --- LOGIQUE BLUETOOTH ---
 async function connect() {
     try {
-        log("Recherche d'un appareil BluePill...", "info");
+        log("Scan en cours...", "info");
         setStatus('connecting', 'Scan...', '');
 
         device = await navigator.bluetooth.requestDevice({
@@ -236,7 +234,7 @@ async function connect() {
         });
 
         savedDeviceName = device.name;
-        log(`Appareil sélectionné : ${savedDeviceName}`, "ok");
+        log(`Unité : ${savedDeviceName}`, "ok");
         setStatus('connecting', 'Liaison...', savedDeviceName);
 
         device.addEventListener('gattserverdisconnected', onDisconnected);
@@ -248,7 +246,7 @@ async function connect() {
         char.addEventListener('characteristicvaluechanged', onIndication);
         await char.startNotifications();
 
-        log("Liaison établie. Réception active.", "ok");
+        log("Liaison établie.", "ok");
         setStatus('dumping', 'Réception...', savedDeviceName);
         
         document.getElementById('btn-connect').textContent = 'Déconnecter';
@@ -268,7 +266,6 @@ function onIndication(event) {
         const raw = data.getInt16(i * 2, true);
         temperatures.push(raw / 10.0);
     }
-
     updateUI();
 }
 
@@ -287,21 +284,21 @@ function updateUI() {
     chart.data.datasets[0].data = temperatures;
     chart.update();
 
-    // Bouton Export
+    // Bouton Export & Déconnecter
     const btnExp = document.getElementById('btn-export');
     btnExp.disabled = false;
     btnExp.classList.add('ready');
-    btnExp.textContent = "Finaliser & Exporter";
+    btnExp.textContent = "Export & Déconnecter";
     
     // Range
     const mins = (temperatures.length - 1) * 5;
-    document.getElementById('chart-range').textContent = `Couverture : ${Math.floor(mins/60)}h${(mins%60).toString().padStart(2,'0')}`;
+    document.getElementById('chart-range').textContent = `Durée : ${Math.floor(mins/60)}h${(mins%60).toString().padStart(2,'0')}`;
 }
 
 async function exportCSV() {
     if (temperatures.length === 0) return;
 
-    log("Génération du rapport CSV...", "info");
+    log("Génération CSV...", "info");
     const now = new Date();
     const dateStr = now.toISOString().slice(0, 10);
     const timeStr = now.getHours() + 'h' + now.getMinutes().toString().padStart(2, '0');
@@ -332,10 +329,11 @@ async function exportCSV() {
     a.download = lastFilename;
     a.click();
 
-    log("Export réussi. Déconnexion de l'unité.", "ok");
+    log("Fichier exporté.", "ok");
     
     // DÉCONNEXION FINALE
     if (device && device.gatt.connected) {
+        log("Fermeture de la session Bluetooth...", "warn");
         await device.gatt.disconnect();
     }
 }
@@ -372,17 +370,6 @@ document.getElementById('btn-connect').addEventListener('click', () => {
 });
 
 document.getElementById('btn-export').addEventListener('click', exportCSV);
-
-document.getElementById('btn-clear').addEventListener('click', () => {
-    if (!confirm("Effacer les données actuelles ?")) return;
-    temperatures = [];
-    chart.data.labels = [];
-    chart.data.datasets[0].data = [];
-    chart.update();
-    document.getElementById('m-count').textContent = "0";
-    document.getElementById('csv-card').style.display = 'none';
-    log("Mémoire interface vidée.", "warn");
-});
 
 document.getElementById('btn-share').addEventListener('click', async () => {
     const file = new File([lastCSV], lastFilename, { type: 'text/csv' });
