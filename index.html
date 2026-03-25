@@ -155,30 +155,6 @@
   }
   .chart-wrap { position: relative; height: 180px; }
 
-  /* ── Progress ── */
-  .progress-wrap { margin-bottom: 1.5rem; display: none; }
-  .progress-label {
-    display: flex;
-    justify-content: space-between;
-    font-family: var(--mono);
-    font-size: 10px;
-    color: var(--muted);
-    margin-bottom: 6px;
-  }
-  .progress-bar {
-    height: 4px;
-    background: var(--border);
-    border-radius: 2px;
-    overflow: hidden;
-  }
-  .progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--accent), var(--accent2));
-    border-radius: 2px;
-    width: 0%;
-    transition: width 0.3s;
-  }
-
   /* ── Buttons ── */
   .btn-row { display: flex; gap: 8px; margin-bottom: 1.5rem; }
   button {
@@ -259,7 +235,15 @@
   #log .info { color: var(--accent); }
   #log .warn { color: var(--warn); }
 
-  /* ── Footer ── */
+  #csv-card { display: none; margin-bottom: 1.5rem; }
+  #csv-output {
+    width: 100%; height: 160px;
+    background: var(--bg); color: var(--accent2);
+    font-family: var(--mono); font-size: 10px;
+    border: none; padding: 12px 14px;
+    resize: none; outline: none; line-height: 1.6;
+  }
+
   footer {
     text-align: center;
     font-family: var(--mono);
@@ -309,32 +293,18 @@
     </div>
   </div>
 
-  <div class="progress-wrap" id="progress-wrap">
-    <div class="progress-label">
-      <span>Réception données</span>
-      <span id="progress-pct">0%</span>
-    </div>
-    <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
-  </div>
-
   <div class="btn-row">
     <button id="btn-connect">Connecter</button>
-    <button id="btn-export" disabled>Exporter CSV</button>
+    <button id="btn-export" disabled>Manuel CSV</button>
     <button id="btn-clear" title="Effacer données">✕</button>
   </div>
 
-  <div class="log-card" id="csv-card" style="display:none;margin-bottom:1.5rem">
+  <div class="log-card" id="csv-card">
     <div class="log-header">
       <span class="log-title">Données CSV</span>
-      <button id="btn-share" style="flex:0 0 auto;padding:4px 10px;font-size:10px;border-color:var(--accent2);color:var(--accent2)">Enregistrer</button>
+      <button id="btn-share" style="flex:0 0 auto;padding:4px 10px;font-size:10px;border-color:var(--accent2);color:var(--accent2)">Partager</button>
     </div>
-    <textarea id="csv-output" readonly style="
-      width:100%;height:160px;
-      background:var(--bg);color:var(--accent2);
-      font-family:var(--mono);font-size:10px;
-      border:none;padding:12px 14px;
-      resize:none;outline:none;line-height:1.6;
-    "></textarea>
+    <textarea id="csv-output" readonly></textarea>
   </div>
 
   <div class="log-card">
@@ -348,16 +318,16 @@
 </div>
 
 <script>
-// ── UUIDs BLE (à adapter selon ton fichier gatt_configuration.btconf) ──────
-const SERVICE_UUID  = '00001809-0000-1000-8000-00805f9b34fb'; // à remplacer
-const CHAR_HISTORY  = 'a838e31a-d72f-4a89-8a21-a47fd67da42f'; // à remplacer
+// ── UUIDs BLE ────────────────────────────────────────────────────────────────
+const SERVICE_UUID  = '00001809-0000-1000-8000-00805f9b34fb'; 
+const CHAR_HISTORY  = 'a838e31a-d72f-4a89-8a21-a47fd67da42f';
 
 // ── État global ──────────────────────────────────────────────────────────────
 let temperatures = [];
 let device = null;
 let char = null;
-let expectedCount = 0;
 let chart = null;
+let dumpTimeout = null; // Timer pour détecter la fin du dump
 
 // ── Chart setup ──────────────────────────────────────────────────────────────
 function initChart() {
@@ -380,25 +350,12 @@ function initChart() {
       responsive: true,
       maintainAspectRatio: false,
       animation: false,
-      plugins: { legend: { display: false }, tooltip: {
-        backgroundColor: '#111820',
-        borderColor: '#1e2a35',
-        borderWidth: 1,
-        titleColor: '#00d4ff',
-        bodyColor: '#c8d8e8',
-        titleFont: { family: 'IBM Plex Mono', size: 11 },
-        bodyFont:  { family: 'IBM Plex Mono', size: 11 },
-        callbacks: {
-          title: (items) => `Index ${items[0].dataIndex}`,
-          label: (item)  => `${item.raw.toFixed(1)} °C`
-        }
-      }},
+      plugins: { legend: { display: false } },
       scales: {
         x: { display: false },
         y: {
           grid: { color: '#1e2a35' },
-          ticks: { color: '#4a6070', font: { family: 'IBM Plex Mono', size: 10 },
-                   callback: v => v.toFixed(1) + '°' }
+          ticks: { color: '#4a6070', font: { family: 'IBM Plex Mono', size: 10 }, callback: v => v.toFixed(1) + '°' }
         }
       }
     }
@@ -418,7 +375,6 @@ function updateMetrics() {
   chart.data.datasets[0].data = temperatures;
   chart.update();
 
-  // Plage temporelle estimée (5 min par mesure)
   const minutes = (temperatures.length - 1) * 5;
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
@@ -439,20 +395,10 @@ function log(msg, cls) {
   const el = document.getElementById('log');
   const line = document.createElement('div');
   if (cls) line.className = cls;
-  const now = new Date();
-  const t = now.toTimeString().slice(0,8);
+  const t = new Date().toTimeString().slice(0,8);
   line.textContent = `[${t}] ${msg}`;
   el.appendChild(line);
   el.scrollTop = el.scrollHeight;
-}
-
-function showProgress(received, total) {
-  const wrap = document.getElementById('progress-wrap');
-  wrap.style.display = 'block';
-  const pct = total > 0 ? Math.round(received / total * 100) : 0;
-  document.getElementById('progress-fill').style.width = pct + '%';
-  document.getElementById('progress-pct').textContent = pct + '%';
-  if (pct >= 100) setTimeout(() => { wrap.style.display = 'none'; }, 1500);
 }
 
 // ── Réception données BLE ────────────────────────────────────────────────────
@@ -461,19 +407,29 @@ function onIndication(event) {
   const count = data.byteLength / 2;
 
   for (let i = 0; i < count; i++) {
-    const raw = data.getInt16(i * 2, true); // little-endian
+    const raw = data.getInt16(i * 2, true);
     temperatures.push(raw / 10.0);
   }
 
-  log(`Batch reçu : ${count} valeurs (total : ${temperatures.length})`, 'info');
-  showProgress(temperatures.length, expectedCount || temperatures.length);
+  log(`Batch reçu : ${count} valeurs...`, 'info');
   updateMetrics();
 
-  // Mise à jour de l'expectedCount si on connaît le total
-  if (temperatures.length >= expectedCount && expectedCount > 0) {
-    log(`Dump terminé — ${temperatures.length} mesures reçues`, 'ok');
-    setStatus('connected', 'Dump terminé', device ? device.name : '');
-  }
+  // Reset le timer de fin de dump à chaque nouveau paquet reçu
+  clearTimeout(dumpTimeout);
+  dumpTimeout = setTimeout(finishDumpAndDisconnect, 2500); // Si rien après 2.5s -> C'est fini !
+}
+
+// ── Fin du Dump, Auto-Save et Déconnexion ────────────────────────────────────
+async function finishDumpAndDisconnect() {
+  log(`Dump terminé ! Total : ${temperatures.length} mesures.`, 'ok');
+  setStatus('connected', 'Dump terminé', device.name);
+  
+  // 1. Déclenche l'export et l'enregistrement automatique
+  await exportCSV(true);
+
+  // 2. Déconnexion automatique
+  log('Déconnexion automatique du logger...', 'warn');
+  await disconnect();
 }
 
 // ── Connexion BLE ────────────────────────────────────────────────────────────
@@ -496,29 +452,34 @@ async function connect() {
     const service = await server.getPrimaryService(SERVICE_UUID);
     char          = await service.getCharacteristic(CHAR_HISTORY);
 
-    log('Service GATT connecté', 'ok');
+    log('Connecté. En attente des données...', 'ok');
     setStatus('dumping', 'Réception données...', device.name);
 
     char.addEventListener('characteristicvaluechanged', onIndication);
     await char.startNotifications();
 
-    log('Indications activées — dump automatique en cours...', 'ok');
     document.getElementById('btn-connect').textContent = 'Déconnecter';
     document.getElementById('btn-connect').classList.add('active');
 
+    // Sécurité : si le logger est connecté mais n'envoie rien, on lance un timer
+    dumpTimeout = setTimeout(() => {
+        if(temperatures.length === 0) log("Aucune donnée reçue. Le logger est-il vide ?", "warn");
+    }, 5000);
+
   } catch (err) {
-    log(`Erreur : ${err.name} — ${err.message || JSON.stringify(err)}`, 'warn');
-    setStatus('', 'Erreur de connexion', '');
+    log(`Erreur : ${err.message}`, 'warn');
+    setStatus('', 'Erreur', '');
   }
 }
 
 function onDisconnected() {
-  log('Déconnecté', 'warn');
+  log('Appareil déconnecté', 'warn');
   setStatus('', 'Déconnecté', '');
   document.getElementById('btn-connect').textContent = 'Connecter';
   document.getElementById('btn-connect').classList.remove('active');
   char = null;
   device = null;
+  clearTimeout(dumpTimeout);
 }
 
 async function disconnect() {
@@ -527,51 +488,79 @@ async function disconnect() {
   }
 }
 
-// ── Export CSV ───────────────────────────────────────────────────────────────
+// ── Export CSV Automatique et Manuel ─────────────────────────────────────────
 let lastCSV = '';
 let lastFilename = '';
 
-function exportCSV() {
+async function exportCSV(isAuto = false) {
   if (temperatures.length === 0) return;
 
   const intervalMin = 5;
-  const now = new Date();
-  const startTime = new Date(now.getTime() - (temperatures.length - 1) * intervalMin * 60000);
+  const dumpTime = new Date();
+  const safeName = (device ? device.name : 'UnknownLogger').replace(/[^a-zA-Z0-9-]/g, '_');
+  
+  // Formatage Nom de fichier : Name_YYYYMMDD_HHMM.csv
+  const dateStr = dumpTime.toISOString().slice(0,10).replace(/-/g, '');
+  const timeStr = dumpTime.toTimeString().slice(0,5).replace(/:/g, '');
+  lastFilename = `${safeName}_${dateStr}_${timeStr}.csv`;
 
-  let csv = 'index,timestamp_estime,temperature_C\n';
+  // Construction de l'en-tête (avec métadonnées utiles)
+  let csv = `# Logger : ${device ? device.name : 'Inconnu'}\n`;
+  csv += `# WebBT ID : ${device ? device.id : 'N/A'}\n`;
+  csv += `# Date du dump : ${dumpTime.toLocaleString('fr-FR')}\n`;
+  csv += `# Total mesures : ${temperatures.length}\n`;
+  csv += `index,timestamp,temperature_C\n`;
+
+  // Génération des lignes avec timestamp inversé
   temperatures.forEach((t, i) => {
-    const ts = new Date(startTime.getTime() + i * intervalMin * 60000);
+    // Le dernier point (length - 1) est "maintenant". Les autres sont dans le passé.
+    const pointsFromEnd = (temperatures.length - 1) - i;
+    const ts = new Date(dumpTime.getTime() - (pointsFromEnd * intervalMin * 60000));
+    
+    // Format YYYY-MM-DD HH:mm:ss
     const iso = ts.toISOString().slice(0, 19).replace('T', ' ');
     csv += `${i},${iso},${t.toFixed(1)}\n`;
   });
 
   lastCSV = csv;
-  lastFilename = `bluepill_${now.toISOString().slice(0,10)}.csv`;
 
+  // Affichage dans l'interface
   const card = document.getElementById('csv-card');
   const area = document.getElementById('csv-output');
   card.style.display = 'block';
   area.value = csv;
-  area.scrollTop = 0;
-  card.scrollIntoView({ behavior: 'smooth' });
-  log(`${temperatures.length} lignes — appuie sur "Enregistrer" pour sauvegarder`, 'ok');
+  
+  // Déclenchement du téléchargement automatique
+  try {
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", lastFilename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    if (isAuto) log(`Fichier ${lastFilename} enregistré auto !`, 'ok');
+  } catch(e) {
+    log(`Erreur d'enregistrement auto. Utilise le bouton Partager.`, 'warn');
+  }
 }
 
 document.getElementById('btn-share').addEventListener('click', async () => {
   if (!lastCSV) return;
-  const file = new File([lastCSV], lastFilename, { type: 'text/plain' });
+  const file = new File([lastCSV], lastFilename, { type: 'text/csv' });
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
     try {
-      await navigator.share({ files: [file], title: 'BluePill CSV' });
-      log('Partage iOS ouvert', 'ok');
+      await navigator.share({ files: [file], title: lastFilename });
+      log('Partage ouvert', 'ok');
     } catch (e) {
       log('Partage annulé', 'warn');
     }
   } else {
-    const area = document.getElementById('csv-output');
-    area.select();
-    document.execCommand('copy');
-    log('Copié dans le presse-papier', 'ok');
+    // Fallback PC/Android si share() n'est pas dispo
+    exportCSV(false);
   }
 });
 
@@ -581,7 +570,7 @@ document.getElementById('btn-connect').addEventListener('click', () => {
   else connect();
 });
 
-document.getElementById('btn-export').addEventListener('click', exportCSV);
+document.getElementById('btn-export').addEventListener('click', () => exportCSV(false));
 
 document.getElementById('btn-clear').addEventListener('click', () => {
   if (!confirm('Effacer toutes les données affichées ?')) return;
@@ -594,12 +583,14 @@ document.getElementById('btn-clear').addEventListener('click', () => {
   document.getElementById('m-max').innerHTML = '—';
   document.getElementById('chart-range').textContent = '—';
   document.getElementById('btn-export').disabled = true;
-  log('Données effacées', 'warn');
+  document.getElementById('csv-card').style.display = 'none';
+  log('Interface remise à zéro.', 'warn');
 });
 
 // ── Init ─────────────────────────────────────────────────────────────────────
 initChart();
-log('BluePill Logger prêt — appuie sur Connecter', 'ok');
+log('Système prêt. Adresse MAC protégée par navigateur (utilisation du Nom/ID).', 'info');
+log('Appuie sur Connecter pour démarrer.', 'ok');
 </script>
 </body>
 </html>
